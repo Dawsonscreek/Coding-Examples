@@ -1,8 +1,11 @@
+-- Pull voters
+
 SELECT *
 INTO #VF
 FROM RNCVoterSnapshot.dbo.USVoterFile (NOLOCK)
 WHERE State = 'MO' 
-GO
+
+-- Pull turnout model from national scores
 
 SELECT State, RNC_RegID, TurnoutGeneral
 INTO #VS_Feb
@@ -13,6 +16,8 @@ FROM (
 	FROM [voterscores_staging].[dbo].[Scores_Reporting_Feb]
 	WHERE State = 'MO'
 ) a
+
+-- Pull latest round of ballot scores 
 
 SELECT State, RNC_RegID, RBallot, DBallot, (RBallot - DBallot) NetBallot
 INTO #VS_6
@@ -25,6 +30,7 @@ FROM (
 	WHERE State = 'MO'
 ) a
 
+-- Combine
 
 SELECT b.*, TurnoutGeneral
 INTO #VS
@@ -37,6 +43,7 @@ DROP TABLE #VS_6
 
 --------------------------------------------------------------------------------------------------------------------------------------------------
 
+-- Create universes
 
 SELECT 'GOTV Tier 1' Univ, COUNT(a.RNC_RegID) Voters, COUNT(DISTINCT HHSEQ) Households, AVG(RBallot) AvgRBal, AVG(DBallot) AvgDBal, AVG(TurnoutGeneral) AvgTO
 FROM #VF a
@@ -63,7 +70,7 @@ FROM #VF a
 	JOIN #VS b ON a.RNC_RegID = b.RNC_RegID
 WHERE NetBallot BETWEEN -.3 AND .3 AND TurnoutGeneral >= .4
 
-
+-- Pull universes
 
 SELECT 'GOTV1' Univ, a.RNC_RegID
 INTO #UNIVERSES
@@ -94,6 +101,7 @@ WHERE NetBallot BETWEEN -.3 AND .3 AND TurnoutGeneral >= .4
 
 -----------------------------------------------------------------------------------------------------------------------
 
+-- Variety of Universe Counts
 
 SELECT Univ, COUNT(DISTINCT a.RNC_RegID) Voters, COUNT(DISTINCT HHSEQ) Households, AVG(NetBallot) NetBallot, AVG(TurnoutGeneral) TurnoutGeneral, SUM(LEN(VH16G)) VH16G, SUM(LEN(VH16P)) VH16P, SUM(LEN(VH14G)) VH14G, SUM(LEN(VH14P)) VH14P
 FROM #UNIVERSES a
